@@ -25,16 +25,44 @@ jobs:
               });
               const permission = permissionResponse.data.permission;
               const hasWriteAccess = ['write', 'admin'].includes(permission);
+            
               if (!hasWriteAccess) {
                 console.log(`User ${context.payload.pull_request.user.login} does not have write access to the repository (permission: ${permission})`);
-                return "manual-approval"
+            
+                // Check if manual-approval environment has required protection rules
+                try {
+                  const environmentResponse = await github.rest.repos.getEnvironment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    environment_name: 'manual-approval'
+                  });
+            
+                  const protectionRules = environmentResponse.data.protection_rules || [];
+                  console.log(`Found ${protectionRules.length} protection rules for manual-approval environment`);
+            
+                  if (protectionRules.length === 0) {
+                    core.setFailed('manual-approval environment must have protection rules configured');
+                    return;
+                  }
+                  const hasRequiredReviewers = protectionRules.some(rule => rule.type === 'required_reviewers');
+            
+                  if (!hasRequiredReviewers) {
+                    core.setFailed('manual-approval environment must have required_reviewers protection rule');
+                    return;
+                  }
+                  console.log('Verified manual-approval environment has required_reviewers protection rule');
+                  return "manual-approval";
+                } catch (envError) {
+                  core.setFailed(`Failed to validate manual-approval environment: ${envError.message}`);
+                  return;
+                }
               } else {
-                console.log(`Verifed ${context.payload.pull_request.user.login} has write access. Auto Approving PR Checks.`)
-                return "auto-approve"
-              }             
+                console.log(`Verified ${context.payload.pull_request.user.login} has write access. Auto Approving PR Checks.`);
+                return "auto-approve";
+              }
             } catch (error) {
-              console.log(`${context.payload.pull_request.user.login} does not have write access. Requiring Manual Approval to run PR Checks.`)
-              return "manual-approval"
+              console.log(`${context.payload.pull_request.user.login} does not have write access. Requiring Manual Approval to run PR Checks.`);
+              return "manual-approval";
             }
   check-access-and-checkout:
     runs-on: ubuntu-latest
