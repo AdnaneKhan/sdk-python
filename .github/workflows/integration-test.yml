@@ -11,7 +11,7 @@ jobs:
     outputs: 
       approval-env: ${{ steps.check.outputs.environment }}
     steps:
-      - name: Check PR labels and author
+      - name: Check permission
         id: check
         uses: AdnaneKhan/deployment-gate@implement-features
         with:
