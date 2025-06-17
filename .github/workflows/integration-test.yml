@@ -2,7 +2,7 @@ name: Secure Integration test
 
 on:
   pull_request_target:
-    branches: main
+    #branches: main
   
 jobs:
   authorization-check:
